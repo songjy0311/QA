@@ -54,7 +54,7 @@ function updateUserDisplay() {
 
     if (isUserLoggedIn) {
         const username = localStorage.getItem('userUsername') || USER_USERNAME;
-        userDisplayName.textContent = username;
+        userDisplayName.textContent = '你好，' + username;
         loginBtn.style.display = 'none';
         logoutBtn.style.display = 'inline-block';
     } else {
@@ -74,7 +74,7 @@ function checkUserLoginStatus() {
 }
 
 function renderDirectoryTree() {
-    const container = document.getElementById('directoryTree');
+    const container = document.getElementById('treeContent');
     const tree = getMenuTree();
 
     const order = { custom: 0, func: 1, invalid: 2 };
@@ -275,6 +275,21 @@ function initUserAccordion() {
             if (!wasExpanded) {
                 item.classList.add('expanded');
                 expandedContentId = itemId;
+
+                setTimeout(() => {
+                    const panelContent = item.closest('.tab-content');
+                    if (panelContent) {
+                        const rect = item.getBoundingClientRect();
+                        const panelRect = panelContent.getBoundingClientRect();
+                        const scrollTop = rect.top - panelRect.top + panelContent.scrollTop;
+                        panelContent.scrollTo({
+                            top: Math.max(0, scrollTop - 5),
+                            behavior: 'smooth'
+                        });
+                    } else {
+                        item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 350);
             } else {
                 expandedContentId = null;
             }
@@ -456,6 +471,8 @@ function init() {
 
     autoLocateNode();
 
+    initSearch();
+
     if (!selectedNodeId) {
         const tree = getMenuTree();
         function findFirstVisibleNode(nodes) {
@@ -479,3 +496,161 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+function initSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+
+    searchInput.addEventListener('input', (e) => {
+        const keyword = e.target.value.trim();
+        if (keyword.length === 0) {
+            searchResults.classList.remove('show');
+            return;
+        }
+        handleSearch(keyword);
+    });
+
+    searchInput.addEventListener('focus', () => {
+        const keyword = searchInput.value.trim();
+        if (keyword.length > 0) {
+            handleSearch(keyword);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.user-search-wrapper')) {
+            searchResults.classList.remove('show');
+        }
+    });
+}
+
+function handleSearch(keyword) {
+    const searchResults = document.getElementById('searchResults');
+    const qaContent = getContent('qa');
+    const manualContent = getContent('manual');
+    const tree = getMenuTree();
+
+    const results = [];
+
+    function searchInNode(nodeId, nodePath) {
+        const config = getNodeConfig(nodeId);
+        if (!config.visible) return;
+        if (!isUserLoggedIn && !config.guestVisible) return;
+
+        const qaList = qaContent[nodeId] || [];
+        const manualList = manualContent[nodeId] || [];
+
+        qaList.forEach(item => {
+            if (item.title.toLowerCase().includes(keyword.toLowerCase())) {
+                results.push({
+                    id: item.id,
+                    title: item.title,
+                    nodeId: nodeId,
+                    path: nodePath,
+                    type: 'qa'
+                });
+            }
+        });
+
+        manualList.forEach(item => {
+            if (item.title.toLowerCase().includes(keyword.toLowerCase())) {
+                results.push({
+                    id: item.id,
+                    title: item.title,
+                    nodeId: nodeId,
+                    path: nodePath,
+                    type: 'manual'
+                });
+            }
+        });
+    }
+
+    function traverseTree(nodes, path = []) {
+        nodes.forEach(node => {
+            const currentPath = [...path, node.name];
+            searchInNode(node.id, currentPath);
+            if (node.children) {
+                traverseTree(node.children, currentPath);
+            }
+        });
+    }
+
+    traverseTree(tree);
+
+    if (results.length === 0) {
+        searchResults.innerHTML = '<div class="search-no-results">未找到匹配结果</div>';
+    } else {
+        searchResults.innerHTML = results.slice(0, 20).map(result => `
+            <div class="search-result-item" data-id="${result.id}" data-node-id="${result.nodeId}" data-type="${result.type}">
+                <div class="result-title">${highlightKeyword(result.title, keyword)}</div>
+                <div class="result-path">${result.path.join(' > ')} <span class="result-type ${result.type}">${result.type === 'qa' ? 'Q&A' : '操作手册'}</span></div>
+            </div>
+        `).join('');
+
+        searchResults.querySelectorAll('.search-result-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const contentId = item.dataset.id;
+                const nodeId = item.dataset.nodeId;
+                const type = item.dataset.type;
+
+                searchResults.classList.remove('show');
+                document.getElementById('searchInput').value = '';
+
+                navigateToContent(nodeId, contentId, type);
+            });
+        });
+    }
+
+    searchResults.classList.add('show');
+}
+
+function highlightKeyword(text, keyword) {
+    const regex = new RegExp(`(${keyword})`, 'gi');
+    return text.replace(regex, '<strong>$1</strong>');
+}
+
+function navigateToContent(nodeId, contentId, type) {
+    const tree = getMenuTree();
+
+    function expandToNode(nodes, targetId) {
+        for (const node of nodes) {
+            if (node.id === targetId) return true;
+            if (node.children && expandToNode(node.children, targetId)) {
+                node.expanded = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    expandToNode(tree, nodeId);
+    saveMenuTree(tree);
+
+    renderDirectoryTree();
+
+    selectedNodeId = nodeId;
+    expandedContentId = contentId;
+    currentTab = type;
+
+    switchTab(type);
+    loadContentForNode(nodeId);
+
+    setTimeout(() => {
+        const accordionItem = document.querySelector(`.accordion-item[data-id="${contentId}"]`);
+        if (accordionItem) {
+            accordionItem.classList.add('expanded');
+            const panelContent = accordionItem.closest('.tab-content');
+            if (panelContent) {
+                const rect = accordionItem.getBoundingClientRect();
+                const panelRect = panelContent.getBoundingClientRect();
+                const scrollTop = rect.top - panelRect.top + panelContent.scrollTop;
+                panelContent.scrollTo({
+                    top: Math.max(0, scrollTop - 5),
+                    behavior: 'smooth'
+                });
+            } else {
+                accordionItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }, 100);
+}

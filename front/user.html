@@ -29,8 +29,10 @@
             </div>
         </div>
         <header class="header">
+            <div class="header-left">
+            </div>
             <div class="header-title">
-                <h1>系统Q&A与操作手册</h1>
+                <h1>用户指引</h1>
             </div>
             <div class="header-right">
                 <span id="userDisplayName" class="user-display-name">游客</span>
@@ -40,9 +42,25 @@
         </header>
 
         <div class="main-container">
-            <aside class="sidebar-left" id="directoryTree"></aside>
+            <aside class="sidebar-left" id="directoryTree">
+                <div class="panel-header">
+                    <h3>目录树</h3>
+                </div>
+                <div class="panel-content" id="treeContent"></div>
+            </aside>
 
             <aside class="sidebar-right" id="contentArea">
+                <div class="panel-header">
+                    <h3>内容</h3>
+                    <div class="user-search-wrapper">
+                        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        <input type="text" id="searchInput" class="form-input" placeholder="搜索内容标题...">
+                        <div id="searchResults" class="user-search-results"></div>
+                    </div>
+                </div>
                 <div class="tab-container">
                     <div class="tab-header" id="tabHeader"></div>
                     <div class="tab-content" id="tabContent"></div>

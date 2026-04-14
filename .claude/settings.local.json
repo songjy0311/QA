@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mysql -uroot -pbomc705 -e \"CREATE DATABASE IF NOT EXISTS qa_service DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\")"
+      "Bash(mysql -uroot -pbomc705 -e \"CREATE DATABASE IF NOT EXISTS qa_service DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\")",
+      "Bash(timeout 5 bash -c \"sleep 5\")",
+      "Bash(dir:*)",
+      "Bash(powershell -Command \"Copy-Item -Path 'D:/QA/newfront/admin.html' -Destination 'D:/QA/front/admin.html' -Force; Copy-Item -Path 'D:/QA/newfront/admin.js' -Destination 'D:/QA/front/admin.js' -Force; Copy-Item -Path 'D:/QA/newfront/user.html' -Destination 'D:/QA/front/user.html' -Force; Copy-Item -Path 'D:/QA/newfront/user.js' -Destination 'D:/QA/front/user.js' -Force; Copy-Item -Path 'D:/QA/newfront/styles.css' -Destination 'D:/QA/front/styles.css' -Force; Write-Host 'Files copied successfully'\")",
+      "Bash(powershell -Command \"Copy-Item -Path 'D:/QA/newfront/styles.css' -Destination 'D:/QA/front/styles.css' -Force; Write-Host 'styles.css copied successfully'\")",
+      "Bash(powershell -Command \"Copy-Item -Path 'D:/QA/newfront/user.js' -Destination 'D:/QA/front/user.js' -Force; Copy-Item -Path 'D:/QA/newfront/admin.js' -Destination 'D:/QA/front/admin.js' -Force; Write-Host 'JS files copied successfully'\")",
+      "Bash(npm run:*)"
     ]
   }
 }

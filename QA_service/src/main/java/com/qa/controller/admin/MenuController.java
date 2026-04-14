@@ -50,6 +50,7 @@ public class MenuController {
             nodeData.put("visible", node.getVisible());
             nodeData.put("guestVisible", node.getGuestVisible());
             nodeData.put("url", node.getUrl());
+            nodeData.put("originalParentId", node.getOriginalParentId());
             nodeData.put("expanded", false);
             nodeData.put("children", new ArrayList<>());
             nodeMap.put(node.getId(), nodeData);
@@ -144,19 +145,49 @@ public class MenuController {
     }
 
     /**
-     * 删除节点
+     * 删除节点（软删除：移入失效菜单，记录原父节点）
      */
     @DeleteMapping("/node/{id}")
     public Result<Void> deleteNode(@PathVariable Long id) {
         MenuNode node = menuNodeMapper.selectById(id);
+        if (node == null) return Result.error("节点不存在");
+        if (node.getParentId() == 0) return Result.error("不能删除根节点");
+        if (node.getOriginalParentId() != null) return Result.error("该节点已在失效菜单中");
 
-        // 检查是否是根节点
-        if (node.getParentId() == 0) {
-            return Result.error("不能删除根节点");
-        }
+        // 找失效菜单根节点
+        QueryWrapper<MenuNode> invalidWrapper = new QueryWrapper<>();
+        invalidWrapper.eq("node_type", "invalid").eq("parent_id", 0);
+        MenuNode invalidRoot = menuNodeMapper.selectOne(invalidWrapper);
+        if (invalidRoot == null) return Result.error("失效菜单根节点不存在");
 
-        // 递归删除子节点
-        deleteNodeRecursive(id);
+        // 移入失效菜单，记录原父节点
+        node.setOriginalParentId(node.getParentId());
+        node.setParentId(invalidRoot.getId());
+        node.setLevelDepth(1);
+        menuNodeMapper.updateById(node);
+
+        return Result.success();
+    }
+
+    /**
+     * 恢复节点（从失效菜单移回原父节点）
+     */
+    @PostMapping("/node/{id}/restore")
+    public Result<Void> restoreNode(@PathVariable Long id) {
+        MenuNode node = menuNodeMapper.selectById(id);
+        if (node == null) return Result.error("节点不存在");
+        if (node.getOriginalParentId() == null) return Result.error("该节点无法恢复");
+
+        MenuNode originalParent = menuNodeMapper.selectById(node.getOriginalParentId());
+        if (originalParent == null) return Result.error("原父节点已不存在，无法恢复");
+
+        Long originalParentId = node.getOriginalParentId();
+        UpdateWrapper<MenuNode> uw = new UpdateWrapper<>();
+        uw.eq("id", node.getId())
+          .set("parent_id", originalParentId)
+          .set("level_depth", originalParent.getLevelDepth() + 1)
+          .set("original_parent_id", null);
+        menuNodeMapper.update(null, uw);
 
         return Result.success();
     }
@@ -388,6 +419,41 @@ public class MenuController {
             manual.setNodeId(newId);
             manualContentMapper.updateById(manual);
         }
+    }
+
+    /**
+     * 清理三级及以下脏数据节点（levelDepth >= 2）
+     */
+    @DeleteMapping("/cleanup-deep")
+    public Result<Map<String, Object>> cleanupDeepNodes() {
+        QueryWrapper<MenuNode> wrapper = new QueryWrapper<>();
+        wrapper.ge("level_depth", 2);
+        wrapper.orderByDesc("level_depth"); // 从最深层开始删，避免父子依赖
+        List<MenuNode> deepNodes = menuNodeMapper.selectList(wrapper);
+
+        int deleted = 0;
+        for (MenuNode node : deepNodes) {
+            // 只删顶层脏节点，deleteNodeRecursive 会递归处理其子节点
+            // 但因为已按深度倒序，直接逐条删即可
+            deleteContentOnly(node.getId());
+            menuNodeMapper.deleteById(node.getId());
+            deleted++;
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("deleted", deleted);
+        return Result.success(result);
+    }
+
+    /** 仅删除节点的内容（不递归，配合 cleanup 使用） */
+    private void deleteContentOnly(Long nodeId) {
+        QueryWrapper<QaContent> qaWrapper = new QueryWrapper<>();
+        qaWrapper.eq("node_id", nodeId);
+        qaContentMapper.delete(qaWrapper);
+
+        QueryWrapper<ManualContent> manualWrapper = new QueryWrapper<>();
+        manualWrapper.eq("node_id", nodeId);
+        manualContentMapper.delete(manualWrapper);
     }
 
     /**

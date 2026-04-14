@@ -21,6 +21,7 @@ public class MenuNode {
     private Integer visible;
     private Integer guestVisible;
     private String url;
+    private Long originalParentId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

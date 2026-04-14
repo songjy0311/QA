@@ -10,8 +10,10 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
 
-  async function login(username: string, password: string) {
-    const res = await authApi.login({ username, password })
+  async function login(username: string, password: string, role?: string) {
+    console.log('Auth Store 登录请求:', { username, role })
+    const res = await authApi.login({ username, password, role })
+    console.log('Auth Store 登录响应:', res)
     if (res.code === 200) {
       token.value = res.data.token
       user.value = res.data

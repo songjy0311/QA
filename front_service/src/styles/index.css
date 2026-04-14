@@ -31,6 +31,16 @@ body {
 }
 
 /* Element Plus 覆盖样式 */
+.el-button {
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.el-button--small {
+    padding: 6px 12px;
+    font-size: 14px;
+}
+
 .el-button--primary {
     background: var(--primary-color);
     border-color: var(--primary-color);
@@ -49,6 +59,19 @@ body {
     background-color: var(--primary-color);
 }
 
+.el-input__wrapper {
+    box-shadow: 0 0 0 1px var(--border-color) inset;
+    transition: all 0.2s;
+}
+
+.el-input__wrapper:hover {
+    box-shadow: 0 0 0 1px var(--border-color) inset;
+}
+
+.el-input__wrapper.is-focus {
+    box-shadow: 0 0 0 1px var(--primary-color) inset;
+}
+
 /* 滚动条样式 */
 ::-webkit-scrollbar {
     width: 8px;
@@ -56,14 +79,77 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--bg-color);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: #ccc;
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
+    background: #999;
+}
+
+/* 选择文本样式 */
+::selection {
+    background: #b3d8ff;
+    color: var(--text-color);
+}
+
+/* 全局动画 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 辅助类 */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.slide-fade-enter-active {
+    transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+    transition: all 0.2s cubic-bezier(1.0, 0.5, 0.8, 1.0);
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+    transform: translateX(10px);
+    opacity: 0;
 }

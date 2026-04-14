@@ -25,6 +25,8 @@ public class AuthController {
 
     @PostMapping("/login")
     public Result<LoginResponse> login(@RequestBody LoginRequest request) {
+        System.out.println("登录请求 - 用户名: " + request.getUsername() + ", 选择角色: " + request.getRole());
+
         QueryWrapper<User> wrapper = new QueryWrapper<>();
         wrapper.eq("username", request.getUsername());
         User user = userMapper.selectOne(wrapper);
@@ -32,6 +34,8 @@ public class AuthController {
         if (user == null) {
             return Result.error("用户不存在");
         }
+
+        System.out.println("数据库用户 - 用户名: " + user.getUsername() + ", 实际角色: " + user.getRole());
 
         if (user.getStatus() == 0) {
             return Result.error("用户已被禁用");
@@ -41,6 +45,20 @@ public class AuthController {
         if (!request.getPassword().equals(user.getPassword())) {
             return Result.error("密码错误");
         }
+
+        // 严格验证角色是否匹配 - 必须传递角色且必须匹配
+        if (request.getRole() == null || request.getRole().trim().isEmpty()) {
+            return Result.error("请选择登录角色");
+        }
+
+        if (!request.getRole().equals(user.getRole())) {
+            System.out.println("角色验证失败 - 选择: " + request.getRole() + ", 实际: " + user.getRole());
+            return Result.error("角色不匹配! 该账号是【" +
+                (user.getRole().equals("admin") ? "管理员" : "普通用户") +
+                "】,请选择正确的角色后重新登录");
+        }
+
+        System.out.println("角色验证通过 - 角色: " + user.getRole());
 
         String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
         LoginResponse response = new LoginResponse(

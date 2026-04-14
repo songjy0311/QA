@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统Q&A与操作手册管理平台</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="loginModal" class="login-modal-overlay">
+        <div class="login-modal">
+            <div class="login-header">
+                <h2>管理员登录</h2>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="login-form-group">
+                    <label for="loginUsername">账号</label>
+                    <input type="text" id="loginUsername" class="login-input" placeholder="请输入账号" autocomplete="off">
+                </div>
+                <div class="login-form-group">
+                    <label for="loginPassword">密码</label>
+                    <input type="password" id="loginPassword" class="login-input" placeholder="请输入密码">
+                </div>
+                <div id="loginError" class="login-error"></div>
+                <button type="submit" class="login-btn">登录</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="app" class="app-hidden">
+        <header class="header">
+            <div class="header-left">
+            </div>
+            <div class="header-title">
+                <h1>用户指引配置页</h1>
+            </div>
+            <div class="header-right">
+                <span id="adminUsername" class="admin-user-info"></span>
+                <button id="logoutBtn" class="btn btn-secondary" style="display:none;">退出登录</button>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <aside class="sidebar-left" id="directoryTree">
+                <div class="panel-header">
+                    <h3>目录树</h3>
+                    <button id="uploadMenuBtn" class="btn btn-primary">上传功能菜单</button>
+                    <input type="file" id="menuFileInput" accept=".txt" style="display:none">
+                </div>
+                <div class="panel-content" id="treeContent"></div>
+            </aside>
+
+            <section class="panel-center" id="nodeConfigPanel">
+                <div class="panel-header">
+                    <h3>节点配置</h3>
+                </div>
+                <div class="panel-content" id="nodeConfigContent">
+                    <p class="empty-hint">请从左侧目录树选择一个节点</p>
+                </div>
+            </section>
+
+            <aside class="sidebar-right" id="contentArea">
+                <div class="panel-header">
+                    <h3>内容配置</h3>
+                    <div class="admin-search-wrapper">
+                        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        <input type="text" id="adminSearchInput" class="form-input" placeholder="搜索内容标题...">
+                        <div class="admin-search-results" id="adminSearchResults"></div>
+                    </div>
+                    <div class="dropdown-wrapper" id="batchDownloadWrapper">
+                        <button class="btn btn-primary" id="batchDownloadBtn">批量下载</button>
+                        <div class="dropdown-menu" id="batchDownloadMenu">
+                            <div class="dropdown-item" id="downloadQABtn">所有Q&A</div>
+                            <div class="dropdown-item" id="downloadManualBtn">所有手册</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="contentAreaWrapper">
+                    <div id="contentAreaContainer">
+                        <div class="tab-container">
+                            <div class="tab-header">
+                                <button class="tab-btn active" data-tab="qa">常见Q&A</button>
+                                <button class="tab-btn" data-tab="manual">操作手册</button>
+                            </div>
+                            <div class="tab-content" id="tabContent">
+                                <div class="tab-panel active" data-panel="qa">
+                                    <div class="content-header">
+                                        <button class="btn btn-add" id="addQABtn">+ 新增</button>
+                                        <button class="btn btn-secondary" id="changeNodeQABtn">更换节点</button>
+                                        <button class="btn btn-secondary cancel-btn" id="cancelChangeNodeBtn" style="display:none;">取消</button>
+                                    </div>
+                                    <div class="content-list" id="qaList">
+                                        <p class="empty-hint">暂无内容</p>
+                                    </div>
+                                </div>
+                                <div class="tab-panel" data-panel="manual">
+                                    <div class="content-header">
+                                        <button class="btn btn-add" id="addManualBtn">+ 新增</button>
+                                        <button class="btn btn-secondary" id="changeNodeManualBtn">更换节点</button>
+                                        <button class="btn btn-secondary cancel-btn" id="cancelChangeNodeManualBtn" style="display:none;">取消</button>
+                                    </div>
+                                    <div class="content-list" id="manualList">
+                                        <p class="empty-hint">暂无内容</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="contentAreaEmpty" class="panel-content" style="display:none;">
+                    <p class="empty-hint">请从左侧目录树选择一个节点</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="modalContainer"></div>
+
+    <script src="data.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

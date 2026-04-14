@@ -73,7 +73,7 @@ function checkLoginStatus() {
 }
 
 function renderDirectoryTree() {
-    const container = document.getElementById('directoryTree');
+    const container = document.getElementById('treeContent');
     const tree = getMenuTree();
 
     const order = { custom: 0, func: 1, invalid: 2 };
@@ -266,7 +266,21 @@ function selectNode(nodeId) {
     selectedNodeId = nodeId;
     renderDirectoryTree();
     renderNodeConfig();
+    updateContentAreaVisibility();
     loadContentForNode(nodeId);
+}
+
+function updateContentAreaVisibility() {
+    const wrapper = document.getElementById('contentAreaWrapper');
+    const emptyMsg = document.getElementById('contentAreaEmpty');
+
+    if (selectedNodeId) {
+        wrapper.style.display = '';
+        emptyMsg.style.display = 'none';
+    } else {
+        wrapper.style.display = 'none';
+        emptyMsg.style.display = '';
+    }
 }
 
 function renderNodeConfig() {
@@ -292,9 +306,12 @@ function renderNodeConfig() {
         <div class="config-form">
             <div class="form-group">
                 <label class="form-label">节点名称</label>
-                <input type="text" class="form-input" id="nodeNameInput" value="${node.name}"
-                    ${node.type === 'func' && node.id.includes('func_root') ? 'disabled' : ''}
-                    maxlength="50">
+                <div style="position: relative;">
+                    <input type="text" class="form-input" id="nodeNameInput" value="${node.name}"
+                        ${node.type === 'func' && node.id.includes('func_root') ? 'disabled' : ''}
+                        maxlength="20">
+                    <span class="char-count" id="nodeNameCharCount" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #999;">0/20</span>
+                </div>
             </div>
             <div class="form-group">
                 <label class="form-checkbox">
@@ -322,6 +339,13 @@ function renderNodeConfig() {
     `;
 
     document.getElementById('saveNodeConfigBtn').onclick = saveNodeConfigHandler;
+
+    const nodeNameInput = document.getElementById('nodeNameInput');
+    const nodeNameCharCount = document.getElementById('nodeNameCharCount');
+    nodeNameCharCount.textContent = `${nodeNameInput.value.length}/20`;
+    nodeNameInput.addEventListener('input', () => {
+        nodeNameCharCount.textContent = `${nodeNameInput.value.length}/20`;
+    });
 
     const visibleInput = document.getElementById('nodeVisibleInput');
     const guestVisibleInput = document.getElementById('nodeGuestVisibleInput');
@@ -393,6 +417,7 @@ function renderContentList(type, list) {
                 <div class="content-item-header">
                     <span class="content-item-title">${item.title}</span>
                     ${!isContentSelectionMode ? `<div class="content-item-actions">
+                        ${type === 'manual' ? `<button class="tree-action-btn download-btn" data-id="${item.id}">下载</button>` : ''}
                         <button class="tree-action-btn danger delete-btn">删除</button>
                     </div>` : ''}
                 </div>
@@ -439,13 +464,21 @@ function initContentItemEvents(type) {
 
     container.querySelectorAll('.content-item').forEach(item => {
         item.addEventListener('click', (e) => {
-            if (e.target.closest('.delete-btn') || e.target.closest('.drag-handle') || e.target.closest('.stat-item')) {
+            if (e.target.closest('.delete-btn') || e.target.closest('.drag-handle') || e.target.closest('.stat-item') || e.target.closest('.download-btn')) {
                 return;
             }
             const id = item.dataset.id;
             const itemType = item.dataset.type;
             showContentModal(itemType, id);
         });
+    });
+
+    container.querySelectorAll('.download-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const id = e.target.dataset.id;
+            downloadSingleContent(id, type);
+        };
     });
 
     container.querySelectorAll('.delete-btn').forEach(btn => {
@@ -593,6 +626,8 @@ function startChangeNodeSelection(type) {
     renderContentList('manual', manualList);
 
     updateChangeNodeButtonState();
+    updateContentHeaderState('qa');
+    updateContentHeaderState('manual');
 }
 
 function updateChangeNodeButtonState() {
@@ -629,6 +664,9 @@ function cancelChangeNodeSelection() {
         renderContentList('qa', qaList);
         renderContentList('manual', manualList);
     }
+
+    updateContentHeaderState('qa');
+    updateContentHeaderState('manual');
 }
 
 function showNodeSelector() {
@@ -1116,7 +1154,10 @@ function showAddNodeModal(parentId) {
         <div class="config-form">
             <div class="form-group">
                 <label class="form-label">节点名称 <span class="required">*</span></label>
-                <input type="text" class="form-input" id="newNodeName" maxlength="50" placeholder="请输入节点名称">
+                <div style="position: relative;">
+                    <input type="text" class="form-input" id="newNodeName" maxlength="20" placeholder="请输入节点名称">
+                    <span class="char-count" id="newNodeNameCharCount" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #999;">0/20</span>
+                </div>
             </div>
         </div>
     `, [
@@ -1125,6 +1166,13 @@ function showAddNodeModal(parentId) {
     ]);
 
     document.getElementById('modalContainer').appendChild(modal);
+
+    const newNodeNameInput = document.getElementById('newNodeName');
+    const newNodeNameCharCount = document.getElementById('newNodeNameCharCount');
+    newNodeNameCharCount.textContent = `0/20`;
+    newNodeNameInput.addEventListener('input', () => {
+        newNodeNameCharCount.textContent = `${newNodeNameInput.value.length}/20`;
+    });
 }
 
 function addNode(parentId) {
@@ -1209,6 +1257,7 @@ function cascadeDelete(nodeId) {
 
     if (selectedNodeId === nodeId) {
         selectedNodeId = null;
+        updateContentAreaVisibility();
     }
 
     renderDirectoryTree();
@@ -1216,6 +1265,11 @@ function cascadeDelete(nodeId) {
 }
 
 function showContentModal(type, contentId = null) {
+    if (!selectedNodeId) {
+        showToast('请先选择一个节点', 'error');
+        return;
+    }
+
     let content = { title: '', body: '', attachment: null };
 
     if (contentId) {
@@ -1229,19 +1283,19 @@ function showContentModal(type, contentId = null) {
         <div class="config-form">
             <div class="form-group">
                 <label class="form-label">内容标题 <span class="required">*</span></label>
-                <input type="text" class="form-input" id="contentTitle" maxlength="100" value="${content.title}" placeholder="请输入内容标题">
+                <div style="position: relative;">
+                    <input type="text" class="form-input" id="contentTitle" maxlength="120" value="${content.title}" placeholder="请输入内容标题">
+                    <span class="char-count" id="contentTitleCharCount" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #999;">0/120</span>
+                </div>
             </div>
             <div class="form-group">
-                <label class="form-label">内容 <span class="required">*</span></label>
-                <div class="rich-editor">
-                    <div class="rich-editor-toolbar">
-                        <button type="button" onclick="document.execCommand('bold')">B</button>
-                        <button type="button" onclick="document.execCommand('italic')">I</button>
-                        <button type="button" onclick="document.execCommand('underline')">U</button>
-                        <button type="button" onclick="insertImage()">图片</button>
-                    </div>
-                    <div class="rich-editor-content" id="richEditorContent" contenteditable="true">${content.body || ''}</div>
-                </div>
+                <label class="form-label">
+                    内容 <span class="required">*</span>
+                    <button type="button" class="btn btn-sm" id="importWordBtn" style="margin-left: 12px;">📄 Word导入</button>
+                </label>
+                <input type="file" id="wordFileInput" accept=".doc,.docx" style="display: none;">
+                <div id="quillEditor" style="height: 300px;">${content.body || ''}</div>
+                <small style="color: #999;">建议单条内容不超过5000字，过长内容可能导致用户端展示不完整</small>
             </div>
             <div class="form-group">
                 <label class="form-label">附件上传</label>
@@ -1256,6 +1310,120 @@ function showContentModal(type, contentId = null) {
     ]);
 
     document.getElementById('modalContainer').appendChild(modal);
+
+    const contentTitleInput = document.getElementById('contentTitle');
+    const contentTitleCharCount = document.getElementById('contentTitleCharCount');
+    contentTitleCharCount.textContent = `${contentTitleInput.value.length}/120`;
+    contentTitleInput.addEventListener('input', () => {
+        contentTitleCharCount.textContent = `${contentTitleInput.value.length}/120`;
+    });
+
+    const quill = new Quill('#quillEditor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, 4, false] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'align': [] }],
+                [{ 'indent': '-1' }, { 'indent': '+1' }],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                ['link', 'video', 'image'],
+                ['blockquote', 'code-block'],
+                ['clean'],
+            ]
+        },
+        placeholder: '请输入内容...'
+    });
+
+    if (content.body) {
+        quill.clipboard.dangerouslyPasteHTML(content.body);
+    }
+
+    document.getElementById('importWordBtn').addEventListener('click', () => {
+        document.getElementById('wordFileInput').click();
+    });
+
+    document.getElementById('wordFileInput').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const extension = file.name.split('.').pop().toLowerCase();
+        if (!['doc', 'docx'].includes(extension)) {
+            showToast('请选择 doc 或 docx 格式的文件', 'error');
+            return;
+        }
+
+        try {
+            showToast('正在导入...', 'info');
+            const arrayBuffer = await file.arrayBuffer();
+
+            const result = await mammoth.convertToHtml({ arrayBuffer }, {
+                convertImage: mammoth.images.imgElement(function(image) {
+                    return image.read('base64').then(function(imageBuffer) {
+                        return {
+                            src: 'data:' + image.contentType + ';base64,' + imageBuffer,
+                        };
+                    });
+                })
+            });
+
+            let processedHtml = result.value;
+
+            processedHtml = processedHtml
+                .replace(/style="[^"]*text-align:\s*(center|right|justify);?[^"]*"/gi, 'class="ql-align-$1"')
+                .replace(/style="[^"]*text-align:\s*(center|right|justify)[^"]*"/gi, 'class="ql-align-$1"')
+                .replace(/style="[^"]*margin-left:\s*(\d+(?:\.\d+)?)pt;?[^"]*"/gi, (match, val) => {
+                    const indentLevel = Math.floor(parseFloat(val) / 21);
+                    return `class="ql-indent-${indentLevel}"`;
+                });
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = processedHtml;
+
+            function processNode(node) {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    let style = node.getAttribute('style') || '';
+                    style = style.replace(/mso-[^;]+;?/gi, '');
+
+                    const colorMatch = style.match(/color:\s*([^;]+);?/i);
+                    const bgMatch = style.match(/background(-color)?:\s*([^;]+);?/i);
+                    const alignMatch = style.match(/text-align:\s*(center|right|justify|left);?/i);
+
+                    let newStyle = '';
+
+                    if (colorMatch) {
+                        newStyle += `color: ${colorMatch[1].trim()};`;
+                    }
+                    if (bgMatch) {
+                        newStyle += `background-color: ${bgMatch[2].trim()};`;
+                    }
+                    if (alignMatch && !node.classList.contains('ql-align-' + alignMatch[1])) {
+                    }
+
+                    if (newStyle) {
+                        node.setAttribute('style', newStyle);
+                    }
+                }
+                for (const child of Array.from(node.childNodes)) {
+                    processNode(child);
+                }
+            }
+
+            processNode(tempDiv);
+
+            quill.clipboard.dangerouslyPasteHTML(tempDiv.innerHTML);
+            showToast('Word文档导入成功', 'success');
+        } catch (error) {
+            console.error('Word导入失败:', error);
+            showToast('Word文档导入失败', 'error');
+        }
+
+        e.target.value = '';
+    });
+
+    window.quillEditor = quill;
 }
 
 function insertImage() {
@@ -1277,14 +1445,15 @@ function insertImage() {
 
 function saveContentHandler(type, contentId) {
     const title = document.getElementById('contentTitle').value.trim();
-    const body = document.getElementById('richEditorContent').innerHTML;
+    const quill = window.quillEditor;
+    const body = quill ? quill.root.innerHTML : '';
 
     if (!title) {
         showToast('请输入内容标题', 'error');
         return;
     }
 
-    if (!body || body === '<br>') {
+    if (!body || body === '<p><br></p>') {
         showToast('请输入内容', 'error');
         return;
     }
@@ -1469,7 +1638,8 @@ async function downloadManual() {
                     const fileName = `${currentPath.join('-')}-${item.title}.docx`;
                     docxContent.push({
                         fileName,
-                        content: item.body
+                        content: item.body,
+                        title: item.title
                     });
                 });
             }
@@ -1495,7 +1665,7 @@ async function downloadManual() {
     zip.file('操作手册汇总.xlsx', excelData);
 
     for (const doc of docxContent) {
-        const docxData = HTMLtoDOCX(doc.content);
+        const docxData = HTMLtoDOCX(doc.content, doc.title);
         zip.file(doc.fileName, docxData);
     }
 
@@ -1506,9 +1676,111 @@ async function downloadManual() {
     link.click();
 }
 
-function HTMLtoDOCX(html) {
-    const docx = htmlDocx.asBlob(html);
+function HTMLtoDOCX(html, title = '') {
+    function processElement(domString) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = domString;
+
+        function processNode(node) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                let style = node.getAttribute('style') || '';
+                const classList = node.classList;
+
+                for (const cls of classList) {
+                    if (cls === 'ql-align-center') {
+                        style += 'text-align: center;';
+                    } else if (cls === 'ql-align-right') {
+                        style += 'text-align: right;';
+                    } else if (cls === 'ql-align-justify') {
+                        style += 'text-align: justify;';
+                    } else if (cls === 'ql-align-left') {
+                        style += 'text-align: left;';
+                    } else if (cls.startsWith('ql-indent-')) {
+                        const indentLevel = parseInt(cls.replace('ql-indent-', ''));
+                        const marginLeft = indentLevel * 2;
+                        style += `margin-left: ${marginLeft}em;`;
+                    }
+                }
+
+                if (style) {
+                    node.setAttribute('style', style);
+                }
+                node.className = '';
+            }
+
+            for (const child of node.childNodes) {
+                processNode(child);
+            }
+        }
+
+        processNode(tempDiv);
+        return tempDiv.innerHTML;
+    }
+
+    const processedHtml = processElement(html);
+
+    const wrapper = `
+        <div style="font-family: 宋体; font-size: 12pt;">
+            <p style="font-size: 16pt; margin: 0; padding: 0; line-height: 1.5; text-align: center;">集中化BOMC系统功能操作手册</p>
+            <p style="font-size: 18pt; font-weight: bold; margin: 0; padding: 0; line-height: 1.5; text-align: center;">${title}</p>
+            <p style="font-size: 12pt; margin: 0; padding: 0; line-height: 1.5;">&nbsp;</p>
+            <p style="font-size: 12pt; margin: 0; padding: 0; line-height: 1.5;">&nbsp;</p>
+            <div style="font-family: 宋体; font-size: 12pt; line-height: 1.5;">${processedHtml}</div>
+        </div>
+    `;
+
+    const docx = htmlDocx.asBlob(wrapper);
     return docx;
+}
+
+function downloadSingleContent(contentId, contentType) {
+    const allContent = getContent(contentType);
+    const nodeContent = allContent[selectedNodeId] || [];
+    const item = nodeContent.find(c => c.id === contentId);
+
+    if (!item) {
+        showToast('内容不存在', 'error');
+        return;
+    }
+
+    const tree = getMenuTree();
+    const node = findNodeById(tree, selectedNodeId);
+    if (!node) {
+        showToast('节点不存在', 'error');
+        return;
+    }
+
+    const path = getNodePath(tree, selectedNodeId);
+    const fileName = `${path.join('-')}-${item.title}.docx`;
+
+    if (contentType === 'manual') {
+        const docxData = HTMLtoDOCX(item.body, item.title);
+        const blob = new Blob([docxData], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+    } else {
+        showToast('Q&A内容仅支持批量导出', 'error');
+    }
+}
+
+function getNodePath(tree, nodeId) {
+    const path = [];
+    function findPath(nodes, targetId, currentPath) {
+        for (const node of nodes) {
+            if (node.id === targetId) {
+                return [...currentPath, node.name];
+            }
+            if (node.children) {
+                const result = findPath(node.children, targetId, [...currentPath, node.name]);
+                if (result) return result;
+            }
+        }
+        return null;
+    }
+    const result = findPath(tree, nodeId, []);
+    return result || [];
 }
 
 function switchTab(tab) {
@@ -1550,6 +1822,7 @@ function init() {
     saveMenuTree(tree);
 
     renderDirectoryTree();
+    updateContentAreaVisibility();
 
     document.getElementById('uploadMenuBtn').onclick = () => {
         document.getElementById('menuFileInput').click();
@@ -1570,7 +1843,155 @@ function init() {
     document.getElementById('cancelChangeNodeBtn').onclick = cancelChangeNodeSelection;
     document.getElementById('cancelChangeNodeManualBtn').onclick = cancelChangeNodeSelection;
 
+    initAdminSearch();
+
     window.closeModal = closeModal;
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+function initAdminSearch() {
+    const searchInput = document.getElementById('adminSearchInput');
+    const searchResults = document.getElementById('adminSearchResults');
+
+    searchInput.addEventListener('input', (e) => {
+        const keyword = e.target.value.trim();
+        if (keyword.length === 0) {
+            searchResults.classList.remove('show');
+            return;
+        }
+        handleAdminSearch(keyword);
+    });
+
+    searchInput.addEventListener('focus', () => {
+        const keyword = searchInput.value.trim();
+        if (keyword.length > 0) {
+            handleAdminSearch(keyword);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.admin-search-wrapper')) {
+            searchResults.classList.remove('show');
+        }
+    });
+}
+
+function handleAdminSearch(keyword) {
+    const searchResults = document.getElementById('adminSearchResults');
+    const qaContent = getContent('qa');
+    const manualContent = getContent('manual');
+    const tree = getMenuTree();
+
+    const results = [];
+
+    function searchInNode(nodeId, nodePath) {
+        const qaList = qaContent[nodeId] || [];
+        const manualList = manualContent[nodeId] || [];
+
+        qaList.forEach(item => {
+            if (item.title.toLowerCase().includes(keyword.toLowerCase())) {
+                results.push({
+                    id: item.id,
+                    title: item.title,
+                    nodeId: nodeId,
+                    path: nodePath,
+                    type: 'qa'
+                });
+            }
+        });
+
+        manualList.forEach(item => {
+            if (item.title.toLowerCase().includes(keyword.toLowerCase())) {
+                results.push({
+                    id: item.id,
+                    title: item.title,
+                    nodeId: nodeId,
+                    path: nodePath,
+                    type: 'manual'
+                });
+            }
+        });
+    }
+
+    function traverseTree(nodes, path = []) {
+        nodes.forEach(node => {
+            const currentPath = [...path, node.name];
+            searchInNode(node.id, currentPath);
+            if (node.children) {
+                traverseTree(node.children, currentPath);
+            }
+        });
+    }
+
+    traverseTree(tree);
+
+    if (results.length === 0) {
+        searchResults.innerHTML = '<div class="admin-search-no-results">未找到匹配结果</div>';
+    } else {
+        searchResults.innerHTML = results.slice(0, 20).map(result => `
+            <div class="admin-search-result-item" data-id="${result.id}" data-node-id="${result.nodeId}" data-type="${result.type}">
+                <div class="result-title">${highlightKeyword(result.title, keyword)}</div>
+                <div class="result-path">${result.path.join(' > ')} <span class="result-type ${result.type}">${result.type === 'qa' ? 'Q&A' : '操作手册'}</span></div>
+            </div>
+        `).join('');
+
+        searchResults.querySelectorAll('.admin-search-result-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const contentId = item.dataset.id;
+                const nodeId = item.dataset.nodeId;
+                const type = item.dataset.type;
+
+                searchResults.classList.remove('show');
+                document.getElementById('adminSearchInput').value = '';
+
+                navigateToAdminContent(nodeId, contentId, type);
+            });
+        });
+    }
+
+    searchResults.classList.add('show');
+}
+
+function highlightKeyword(text, keyword) {
+    const regex = new RegExp(`(${keyword})`, 'gi');
+    return text.replace(regex, '<strong>$1</strong>');
+}
+
+function navigateToAdminContent(nodeId, contentId, type) {
+    const tree = getMenuTree();
+
+    function expandToNode(nodes, targetId) {
+        for (const node of nodes) {
+            if (node.id === targetId) return true;
+            if (node.children && expandToNode(node.children, targetId)) {
+                node.expanded = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    expandToNode(tree, nodeId);
+    saveMenuTree(tree);
+
+    renderDirectoryTree();
+
+    selectedNodeId = nodeId;
+    renderNodeConfig();
+    updateContentAreaVisibility();
+
+    switchTab(type);
+    loadContentForNode(nodeId);
+
+    setTimeout(() => {
+        const contentItem = document.querySelector(`#${type}List .content-item[data-id="${contentId}"]`);
+        if (contentItem) {
+            contentItem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            contentItem.classList.add('highlight');
+            setTimeout(() => {
+                contentItem.classList.remove('highlight');
+            }, 2000);
+        }
+    }, 100);
+}

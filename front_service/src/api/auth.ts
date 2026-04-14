@@ -3,6 +3,7 @@ import api from './index'
 export interface LoginRequest {
   username: string
   password: string
+  role?: string // 可选的角色参数
 }
 
 export interface LoginResponse {

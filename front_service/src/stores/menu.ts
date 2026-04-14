@@ -13,6 +13,8 @@ export const useMenuStore = defineStore('menu', () => {
       const res = await menuApi.getAdminTree()
       if (res.code === 200) {
         tree.value = res.data
+        // 根节点默认展开
+        tree.value.forEach(root => { root.expanded = true })
       }
     } finally {
       loading.value = false

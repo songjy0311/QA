@@ -80,10 +80,11 @@ public class ContentController {
     @PostMapping("/qa/move")
     public Result<Void> moveQa(@RequestBody Map<String, Object> params) {
         @SuppressWarnings("unchecked")
-        List<Long> contentIds = (List<Long>) params.get("contentIds");
-        Long targetNodeId = (Long) params.get("targetNodeId");
+        List<Object> rawIds = (List<Object>) params.get("contentIds");
+        Long targetNodeId = ((Number) params.get("targetNodeId")).longValue();
 
-        for (Long id : contentIds) {
+        for (Object raw : rawIds) {
+            Long id = ((Number) raw).longValue();
             QaContent content = qaContentMapper.selectById(id);
             if (content != null) {
                 content.setNodeId(targetNodeId);
@@ -193,10 +194,11 @@ public class ContentController {
     @PostMapping("/manual/move")
     public Result<Void> moveManual(@RequestBody Map<String, Object> params) {
         @SuppressWarnings("unchecked")
-        List<Long> contentIds = (List<Long>) params.get("contentIds");
-        Long targetNodeId = (Long) params.get("targetNodeId");
+        List<Object> rawIds = (List<Object>) params.get("contentIds");
+        Long targetNodeId = ((Number) params.get("targetNodeId")).longValue();
 
-        for (Long id : contentIds) {
+        for (Object raw : rawIds) {
+            Long id = ((Number) raw).longValue();
             ManualContent content = manualContentMapper.selectById(id);
             if (content != null) {
                 content.setNodeId(targetNodeId);

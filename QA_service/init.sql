@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS menu_node (
     visible TINYINT NOT NULL DEFAULT 1 COMMENT '是否对用户可见：1-可见 0-不可见',
     guest_visible TINYINT NOT NULL DEFAULT 0 COMMENT '是否对游客可见：1-可见 0-不可见',
     url VARCHAR(500) COMMENT '关联URL，用于外部系统跳转定位',
+    original_parent_id BIGINT DEFAULT NULL COMMENT '软删除前的父节点ID，非空表示已移入失效菜单',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_parent_id (parent_id),

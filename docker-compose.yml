@@ -8,6 +8,8 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-bomc0705}
       MYSQL_DATABASE: qa_service
       MYSQL_ROOT_HOST: '%'
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     volumes:
       - ./QA_service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - mysql_data:/var/lib/mysql

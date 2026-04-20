@@ -1,6 +1,10 @@
 -- 系统问答与操作手册管理平台 - 数据库初始化脚本
 -- 执行前请确保 MySQL 服务已启动
 
+-- 设置导入字符集，确保中文数据正确存储
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
+
 -- 创建数据库
 CREATE DATABASE IF NOT EXISTS qa_service DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE qa_service;

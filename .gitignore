@@ -1,2 +1,4 @@
 # Project exclude paths
 /QA_service/target/
+front_service/node_modules/
+front_service/dist/
